@@ -1,6 +1,6 @@
 <template>
   <div class="login-container">
-    <!-- el-form 组件,展示表单 model收集数据,rules是表单验证规则-->
+    <!-- el-form 组件,展示表单 model收集数据,rules是表单验证规则  -->
     <el-form
       ref="loginForm"
       :model="loginForm"
