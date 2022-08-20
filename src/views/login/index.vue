@@ -177,9 +177,9 @@ $cursor: #fff;
 
     input {
       background: transparent;
-      border: 0px;
+      border: 0;
       -webkit-appearance: none;
-      border-radius: 0px;
+      border-radius: 0;
       padding: 12px 5px 12px 15px;
       color: $light_gray;
       height: 47px;
@@ -209,7 +209,7 @@ $light_gray: #eee;
 .login-container {
   min-height: 100%;
   width: 100%;
-  background: url(~@/assets/1.png) no-repeat;
+  background: url(~@/assets/chuyin2h.png) no-repeat;
   background-size: 100% 100%;
   overflow: hidden;
 
