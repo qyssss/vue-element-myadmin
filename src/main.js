@@ -32,7 +32,10 @@ if (process.env.NODE_ENV === 'production') {
 Vue.use(ElementUI, { locale })
 // 如果想要中文版 element-ui，按如下方式声明
 // Vue.use(ElementUI)
-
+// 引入 API 请求接口
+import API from '@/api'
+// 挂载到原型 让任意组件可以使用 api 接口
+Vue.prototype.$API = API
 Vue.config.productionTip = false
 
 new Vue({

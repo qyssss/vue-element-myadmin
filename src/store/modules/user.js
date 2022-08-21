@@ -28,17 +28,16 @@ const mutations = {
 }
 
 const actions = {
-  // 登录业务
+  // user login
   async login({ commit }, userInfo) {
-    // 解构用户名和密码
     const { username, password } = userInfo
-    let result = await login({ username: username.trim(), password: password })
+    const result = await login({ username: username.trim(), password: password })
     if (result.code === 20000) {
       commit('SET_TOKEN', result.data.token)
       setToken(result.data.token)
-      return "success"
+      return 'success'
     } else {
-      return new Promise(new Error("fail"))
+      return Promise.reject(new Error('fail'))
     }
   },
 

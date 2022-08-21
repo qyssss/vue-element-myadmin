@@ -27,17 +27,15 @@ module.exports = {
   publicPath: '/',
   outputDir: 'dist',
   assetsDir: 'static',
-  lintOnSave: process.env.NODE_ENV === 'development',
+  //lintOnSave: process.env.NODE_ENV === 'development',
+  lintOnSave:false,
   productionSourceMap: false,
   devServer: {
-    port: port,
-    open: true,
-    overlay: {
-      warnings: false,
-      errors: true
-    },
-    // 配置跨域
     proxy: {
+      '/dev-api/goods': {
+        target: 'http://39.98.123.211:8510',
+        pathRewrite:{'^/dev-api/goods':''}
+      },
       '/dev-api': {
         target: 'http://39.98.123.211:8170',
         pathRewrite: { '^/dev-api': '' }
@@ -93,7 +91,7 @@ module.exports = {
             .plugin('ScriptExtHtmlWebpackPlugin')
             .after('html')
             .use('script-ext-html-webpack-plugin', [{
-              // `runtime` must same as runtimeChunk name. default is `runtime`
+            // `runtime` must same as runtimeChunk name. default is `runtime`
               inline: /runtime\..*\.js$/
             }])
             .end()
