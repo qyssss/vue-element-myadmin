@@ -37,7 +37,9 @@ import API from '@/api'
 // 挂载到原型 让任意组件可以使用 api 接口
 Vue.prototype.$API = API
 Vue.config.productionTip = false
-
+// 注册全局组件
+import CategorySelect  from "@/components/CategorySelect";
+Vue.component(CategorySelect.name,CategorySelect)
 new Vue({
   el: '#app',
   router,

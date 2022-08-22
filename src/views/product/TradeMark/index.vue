@@ -23,7 +23,7 @@
         <template slot-scope="{row,$index}">
           <!-- row 代表作用域插槽回传的数据-->
           <el-button type="warning" icon="el-icon-edit" size="mini" @click="updateTradeMark(row)">修改</el-button>
-          <el-button type="danger" icon="el-icon-delete" size="mini">删除</el-button>
+          <el-button type="danger" icon="el-icon-delete" size="mini" @click="deleteTradeMark(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -46,11 +46,14 @@
     </el-pagination>
     <!-- 对话框 -->
     <el-dialog :title="tmForm.id? '修改品牌' : '添加品牌'" :visible.sync="dialogFormVisible">
-      <el-form style="width:80%" :model="tmForm">
-        <el-form-item label="品牌名称" label-width="100px">
+      <!--
+      Form 组件提供了表单验证的功能，只需要通过 rules 属性传入约定的验证规则，并将 Form-Item 的 prop 属性设置为需校验的字段名即可。
+      -->
+      <el-form style="width:80%" :model="tmForm" :rules="rules" ref="ruleForm">
+        <el-form-item label="品牌名称" label-width="100px" prop="tmName">
           <el-input autocomplete="off" v-model="tmForm.tmName"></el-input>
         </el-form-item>
-        <el-form-item label="品牌LOGO" label-width="100px">
+        <el-form-item label="品牌LOGO" label-width="100px" prop="logoUrl">
           <!--
           上传图片
             :on-success="handleAvatarSuccess" 上传成功的回调
@@ -77,25 +80,45 @@
 </template>
 
 <script>
+import {reqDeleteTradeMark} from "@/api/product/tradeMark";
+
 export default {
   name: 'TradeMark',
   data() {
+    // 自定义验证规则
+    let validateBrand = (rule, value, callback) => {
+      if (value.length < 2 || value.length > 8) {
+        callback(new Error("品牌名称2-8位"))
+      } else {
+        callback()
+      }
+    };
     return {
       page: 1, // 当前页码
       limit: 3, // 当前页展示数据条数
       total: 0, // 总共数据条数
       list: [], // 列表数据
       dialogFormVisible: false, // 控制对话框隐藏和显示
-      tmForm:{  // 收集品牌信息 这里根据文档写属性
-        "logoUrl": '',
-        "tmName": '',
+      tmForm: {  // 收集品牌信息 这里根据文档写属性
+        tmName: '',
+        logoUrl: '',
       },
+      rules: { // 表单验证规则 品牌名称和品牌logo
+        tmName: [
+          {required: true, message: '请输入品牌名称', trigger: 'blur'},
+          // 自定义校验规则
+          {validator: validateBrand, trigger: 'blur'}
+        ],
+        logoUrl: [
+          {required: true, message: '请选择品牌图片', trigger: 'change'}
+        ],
+      }
     }
   },
   methods: {
     // 获取列表数据的方法
-    async getPageList(pager) {
-      const {page, limit} = this
+    async getPageList() {
+      let {page, limit} = this
       let result = await this.$API.tradeMark.reqTradeMarkList(page, limit)
       if (result.code === 200) {
         this.total = result.data.total
@@ -114,12 +137,12 @@ export default {
       this.getPageList()
     },
     // 点击添加品牌的按钮 显示对话框
-    showDialog(){
+    showDialog() {
       this.dialogFormVisible = true
-      this.tmForm = {tmName: '',logoUrl: ''} // 数据置空
+      this.tmForm = {tmName: '', logoUrl: ''} // 数据置空
     },
     // 修改产品
-    updateTradeMark(row){
+    updateTradeMark(row) {
       // row 是当前用户选中的品牌信息
       // 如果这样写this.tmForm = row, tmForm存储的就是服务器返回的品牌信息,这里会导致tmForm直接操作服务器数据(是深拷贝)
       // 使用浅拷贝 {...row} 或者 Object.assign({},row)
@@ -145,16 +168,50 @@ export default {
       return isJPG && isLt2M;
     },
     // 添加按钮的钩子 (添加或者修改品牌)
-    async addOrUpdateTradeMark(){
-      this.dialogFormVisible = false
-      // 发请求
-      let result = await this.$API.tradeMark.reqAddOrUpdateTradeMark(this.tmForm)
-      if(result.code === 200){
-        // 弹出信息 添加成功或者修改成功
-        this.$message.success(this.tmForm.id ? "修改品牌成功" : "添加品牌成功")
-        // 重新发请求,如果修改就停在当前页,增加就到最后一页
-        this.handleCurrentChange(this.tmForm.id ? this.page : parseInt(this.total/this.limit + 1))
-      }
+    addOrUpdateTradeMark() {
+      // 表单验证通过后再执行逻辑
+      this.$refs.ruleForm.validate(async (valid) => {
+        if (valid) {
+          this.dialogFormVisible = false
+          // 发请求
+          let result = await this.$API.tradeMark.reqAddOrUpdateTradeMark(this.tmForm)
+          if (result.code === 200) {
+            // 弹出信息 添加成功或者修改成功
+            this.$message.success(this.tmForm.id ? "修改品牌成功" : "添加品牌成功")
+            // 重新发请求,如果修改就停在当前页,增加就到最后一页
+            this.handleCurrentChange(this.tmForm.id ? this.page : parseInt(this.total / this.limit + 1))
+          }
+        } else {
+          console.log('error submit!!');
+          return false;
+        }
+      });
+    },
+    // 删除品牌
+    deleteTradeMark(row) {
+      this.$confirm(`确定删除${row.tmName}吗`, '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(async () => {
+        // 用户点确定会触发
+        let result = await this.$API.tradeMark.reqDeleteTradeMark(row.id)
+        console.log(result)
+        if (result.code === 200) {
+          this.$message({
+            type: 'success',
+            message: '删除成功!'
+          });
+        }
+        // 当前页删没了回上一页
+        this.handleCurrentChange(this.list.length > 1 ? this.page : this.page - 1)
+      }).catch(() => {
+        // 用户点取消会触发
+        this.$message({
+          type: 'info',
+          message: '已取消删除'
+        });
+      });
     }
   },
   mounted() {
@@ -172,9 +229,11 @@ export default {
   position: relative;
   overflow: hidden;
 }
+
 .avatar-uploader .el-upload:hover {
   border-color: #409EFF;
 }
+
 .avatar-uploader-icon {
   font-size: 28px;
   color: #8c939d;
@@ -183,6 +242,7 @@ export default {
   line-height: 178px;
   text-align: center;
 }
+
 .avatar {
   width: 178px;
   height: 178px;
