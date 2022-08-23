@@ -1,7 +1,7 @@
 <template>
   <div>
     <el-card>
-      <CategorySelect @getCategoryId="getCategoryId"></CategorySelect>
+      <CategorySelect @getCategoryId="getCategoryId" :show="!isShowTable"></CategorySelect>
     </el-card>
     <el-card>
       <div v-show="isShowTable">
@@ -58,18 +58,21 @@
             <template slot-scope="{row,$index}">
               <!--这里是input和span切换-->
               <el-input placeholder="请输入属性值名称" v-model="row.valueName" size="mini"
-                        v-if="row.flag" @blur="toLook(row)" @keyup.native.enter="toLook(row)">
+                        v-if="row.flag" @blur="toLook(row)" @keyup.native.enter="toLook(row)" :ref="$index">
               </el-input>
-              <span v-else @click="row.flag=true" style="display: block;height: 30px">{{ row.valueName }}</span>
+              <span v-else @click="toEdit(row,$index)" style="display: block;height: 30px">{{ row.valueName }}</span>
             </template>
           </el-table-column>
           <el-table-column label="操作">
             <template slot-scope="{row,$index}">
-              <el-button type="danger" icon="el-icon-delete" size="mini"></el-button>
+              <!--气泡确认框 onConfirm是老版本的事件,现在是confirm-->
+              <el-popconfirm :title="`确定删除${row.valueName}吗？`" @onConfirm="deleteAttrValue($index)">
+                <el-button type="danger" icon="el-icon-delete" size="mini" slot="reference"></el-button>
+              </el-popconfirm>
             </template>
           </el-table-column>
         </el-table>
-        <el-button type="primary">保存</el-button>
+        <el-button type="primary" @click="addOrUpdateAttr" :disabled="attrInfo.attrValueList.length < 1">保存</el-button>
         <el-button @click="isShowTable=true">取消</el-button>
       </div>
     </el-card>
@@ -79,6 +82,7 @@
 <script>
 // 引入 lodash 中的深拷贝
 import cloneDeep from "lodash/cloneDeep"
+import {reqAddOrUpdateAttr} from "@/api/product/attr";
 
 export default {
   name: 'Attr',
@@ -130,7 +134,11 @@ export default {
       this.attrInfo.attrValueList.push({
         attrId: this.attrInfo.id, // 修改的时候应该把原来的id带上,添加时就是 undefined
         valueName: '',      // 属性值名称
-        flag:true,  // 给每个属性添加一个 flag 用于切换查看和编辑模式
+        flag: true,  // 给每个属性添加一个 flag 用于切换查看和编辑模式
+      })
+      // 实现添加属性值表单也自动聚焦
+      this.$nextTick(() => {
+        this.$refs[this.attrInfo.attrValueList.length - 1].focus()
       })
     },
     // 添加属性按钮的钩子
@@ -152,10 +160,60 @@ export default {
       this.isShowTable = false
       // 把选中的属性赋值给 attrInfo 因为数据结构中有对象中有数组,数组里又有对象,浅拷贝不能解决问题,这里用lodash的深拷贝
       this.attrInfo = cloneDeep(row)
+      // 把属性值添加上 flag 标记
+      this.attrInfo.attrValueList.forEach(item => {
+        // 这样写加上了flag字段,但是无效果,因为flag不是响应式
+        // item.flag = false
+        this.$set(item, 'flag', false)
+      })
     },
     // 失去焦点的钩子,切换为查看模式展示span
-    toLook(row){
+    toLook(row) {
+      // 限制用户输入
+      if (row.valueName.trim() === '') {
+        this.$message("不能输入为空")
+        return;
+      }
+      let res = this.attrInfo.attrValueList.some(item => {
+        // 将自身去除
+        if (row !== item) {
+          return row.valueName === item.valueName
+        }
+      })
+      // 如果有重复就return
+      if (res) return
       row.flag = false
+    },
+    // 变为编辑模式,点击span的钩子
+    toEdit(row, index) {
+      row.flag = true
+      // 这里点击后获取需要一定时间,使用nextTick等待一轮
+      this.$nextTick(() => {
+        this.$refs[index].focus()
+      })
+    },
+    // 删除属性的气泡确认框
+    deleteAttrValue(index) {
+      this.attrInfo.attrValueList.splice(index, 1)
+    },
+    // 保存按钮的钩子 进行添加或者修改属性操作
+    async addOrUpdateAttr() {
+      // 整理参数 1.属性值为空不能提交 2.不能有flag字段
+      this.attrInfo.attrValueList = this.attrInfo.attrValueList.filter(item => {
+        if (item.valueName !== '') {
+          delete item.flag
+          return true
+        }
+      })
+      try{
+        // 发请求
+        await this.$API.attr.reqAddOrUpdateAttr(this.attrInfo)
+        this.isShowTable = true
+        this.$message.success("保存成功")
+        this.getAttrList() // 再次获取属性展示
+      }catch(e){
+        this.$message.error('保存失败')
+      }
     }
   }
 }

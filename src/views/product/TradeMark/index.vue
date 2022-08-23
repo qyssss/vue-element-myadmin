@@ -80,7 +80,6 @@
 </template>
 
 <script>
-import {reqDeleteTradeMark} from "@/api/product/tradeMark";
 
 export default {
   name: 'TradeMark',
